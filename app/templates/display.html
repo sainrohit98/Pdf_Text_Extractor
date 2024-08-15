@@ -1,0 +1,36 @@
+<!-- display.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display Extracted Images</title>
+</head>
+<body>
+    <h1>Extracted Text</h1>
+
+    {% for page, text in text_data.items() %}
+    <p>Text of {{ page }}</p> <p>{{ text }}</p>
+    {% endfor %}
+
+
+     {% if images %}
+     <h1>Extracted Images</h1>
+     {% for image in images %}
+     <div>
+         <img src="data:image/png;base64,{{ image }}" alt="Extracted Image" width="500" height="300">
+     </div>
+    {% endfor %}
+    {% endif %}
+     {% if texts %}
+    <h1>Extracted Image text</h1>
+
+    {{texts}}
+    {% endif %}
+
+
+
+
+</body>
+</html>

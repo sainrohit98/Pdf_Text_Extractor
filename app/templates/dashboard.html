@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <h2>ConnectMore</h2>
+        <button onclick="toggleAddUserForm()">Add user</button>
+        <div class="footer"></div>
+    </div>
+
+    <div class="main-content">
+        <form method="POST" class="top-nav">
+             <h2>DASHBOARD</h2>
+            <input type="text" name="search" placeholder="Search for users" value="{{ query }}">
+
+        </form>
+
+        <div class="table-container">
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom:20px;">
+    <h2 style="font-size: 15px; margin: 0;">ALL USERS</h2>
+    <div style="display: flex; align-items: center;">
+
+        <label for="dateRange" style="margin-right: 5px;margin-top: -22px;">Date Range:</label>
+        <form method="POST" class="top-nav">
+        <select name="date_range" id="dateRange" style=" border-radius: 5px;">
+            <option value="Last 30 days" {% if date_range == 'Last 30 days' %}selected{% endif %}>Last 30 days</option>
+            <option value="Last 7 days" {% if date_range == 'Last 7 days' %}selected{% endif %}>Last 7 days</option>
+            <option value="Last 24 hours" {% if date_range == 'Last 24 hours' %}selected{% endif %}>Last 24 hours</option>
+        </select>
+        </form>
+    </div>
+</div>
+
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>E-mail</th>
+                        <th>Sent mails</th>
+                        <th>Activity time</th>
+                        <th>Activity state</th>
+                        <th>Actions</th>
+                         <th>File</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    {% for user in users %}
+                    <tr id="user-{{ user.id }}">
+                        <td>{{ user.id }}</td>
+                         <td><strong>{{ user.username }}</strong></td>
+
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.sent_mails }}</td>
+                        <td>{{ user.activity_time }}</td>
+
+                        <td>
+                            <div class="status-indicator {{ 'status-active' if user.status == 'active' else 'status-inactive' }}"></div>
+                            {{ user.status }} now
+                        </td>
+                        <td>
+                            <button onclick="editUser({{ user.id }})">✏️</button>
+                            <button onclick="deleteUser({{ user.id }})">🗑️</button>
+                        </td>
+                         <td>{% if user.pdf_file %}
+                            {{ user.pdf_file[8:] }}<br>
+                           <a href="{{ url_for('main.extract_text', id=user.id) }}">Extract</a></td>
+                            {% else %}
+                            <a href="{{ url_for('main.upload_file', id=user.id) }}">Upload File</a></td>
+
+                            {% endif %}
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Add/Update User Form (Initially Hidden) -->
+        <form id="addUserForm" style="display:none;">
+            <h2 id="formTitle">Add New User</h2>
+            <input type="hidden" id="userId" name="userId">
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+
+            <label for="sent_mails">Sent Mails:</label>
+            <input type="number" id="sent_mails" name="sent_mails" required>
+
+            <label for="activity_time">Activity Time:</label>
+            <input type="text" id="activity_time" name="activity_time" required>
+
+            <label for="status">Status:</label>
+            <input type="text" id="status" name="status" required>
+
+            <button type="button" onclick="saveUser()">Save User</button>
+        </form>
+    </div>
+
+   <script>
+        function toggleAddUserForm() {
+            const form = document.getElementById('addUserForm');
+            document.getElementById('formTitle').innerText = 'Add New User';
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            document.getElementById('userId').value = '';  // Clear hidden user ID field
+            document.getElementById('addUserForm').reset();
+        }
+
+        function saveUser() {
+            const userId = document.getElementById('userId').value;
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const sentMails = document.getElementById('sent_mails').value;
+            const activityTime = document.getElementById('activity_time').value;
+            const status = document.getElementById('status').value;
+
+            const userData = {
+                username: username,
+                email: email,
+                sent_mails: sentMails,
+                activity_time: activityTime,
+                status: status
+            };
+
+            const method = userId ? 'PUT' : 'POST';
+            const url = userId ? `/users/${userId}` : '/users';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (method === 'POST') {
+                    alert('User added successfully!');
+                    location.reload();
+                    const newRow = `
+                    <tr id="user-${data.id}">
+                        <td>${data.id}</td>
+                        <td>${data.username}</td>
+                        <td>${data.email}</td>
+                        <td>${data.sent_mails}</td>
+                        <td>${data.activity_time}</td>
+                        <td>
+                            <div class="status-indicator ${data.status === 'active' ? 'status-active' : 'status-inactive'}"></div>
+                            ${data.status} now
+                        </td>
+                        <td>
+                            <button onclick="editUser(${data.id})">✏️</button>
+                            <button onclick="deleteUser(${data.id})">🗑️</button>
+                        </td>
+                    </tr>`;
+                    document.getElementById('userTableBody').insertAdjacentHTML('beforeend', newRow);
+                } else {
+                    alert('User updated successfully!');
+                    location.reload();
+                    document.querySelector(`#user-${userId} td:nth-child(2)`).innerText = data.username;
+                    document.querySelector(`#user-${userId} td:nth-child(3)`).innerText = data.email;
+                    document.querySelector(`#user-${userId} td:nth-child(4)`).innerText = data.sent_mails;
+                    document.querySelector(`#user-${userId} td:nth-child(5)`).innerText = data.activity_time;
+                    document.querySelector(`#user-${userId} .status-indicator`).className = data.status === 'active' ? 'status-indicator status-active' : 'status-indicator status-inactive';
+                    document.querySelector(`#user-${userId} td:nth-child(6)`).innerText = `${data.status} now`;
+                }
+                toggleAddUserForm();  // Hide the form after saving
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to save user');
+            });
+        }
+
+        function editUser(userId) {
+            fetch(`/users/${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('userId').value = data.id;
+                document.getElementById('username').value = data.username;
+                document.getElementById('email').value = data.email;
+                document.getElementById('sent_mails').value = data.sent_mails;
+                document.getElementById('activity_time').value = data.activity_time;
+                document.getElementById('status').value = data.status;
+                document.getElementById('formTitle').innerText = 'Edit User';
+                document.getElementById('addUserForm').style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to load user data');
+            });
+        }
+
+        function deleteUser(userId) {
+            if (confirm('Are you sure you want to delete this user?')) {
+                fetch(`/users/${userId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert('User deleted successfully!');
+                    document.getElementById(`user-${userId}`).remove();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to delete user');
+                });
+            }
+        }
+    </script>
+
+
+</body>
+</html>
